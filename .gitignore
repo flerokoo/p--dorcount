@@ -30,6 +30,7 @@ coverage
 
 /persist
 /.vscode
+/run.sh
 # nyc test coverage
 .nyc_output
 

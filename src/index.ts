@@ -7,8 +7,8 @@ import moment from "moment-timezone";
 
 
 const start = async () => {
-  // const token = process.env.BOT_TOKEN;
-  const token = "1110894129:AAFx-3hXR4ClLrzS69Uq__K3TFijUCy-nAs";
+  const token = process.env.BOT_TOKEN;
+  
   if (token == undefined) throw new Error("No bot token provided");
 
   const bot = new Bot(token);
