@@ -1,6 +1,7 @@
 export interface Birthday {
   date: Date;
   userId: number;
-  dayOfYear: number;
+  dayOfMonth: number;
+  month: number;
   definedInChatId: number;
 }

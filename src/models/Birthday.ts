@@ -28,7 +28,11 @@ export const defineBirthdayModel = (db: Sequelize) => {
         type: DataTypes.BIGINT,
         allowNull: false
       },
-      dayOfYear: {
+      dayOfMonth: {
+        type: DataTypes.SMALLINT,
+        allowNull: false
+      },
+      month: {
         type: DataTypes.SMALLINT,
         allowNull: false
       }
@@ -38,6 +42,9 @@ export const defineBirthdayModel = (db: Sequelize) => {
         {
           unique: true,
           fields: ["userId"],
+        },
+        {
+          fields: ["month", "dayOfMonth"]
         }
       ]
     }

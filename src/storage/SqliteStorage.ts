@@ -23,6 +23,7 @@ export class SqliteStorage implements IStorage {
     this.sequelize = new Sequelize({
       dialect: "sqlite",
       storage: "./persist/database.sqlite",
+      // logging: false
     });
 
     const models = defineModels(this.sequelize);
@@ -211,10 +212,12 @@ export class SqliteStorage implements IStorage {
 
   async getBirthdaysAtDate(date: Date): Promise<Birthday[]> {
     const d = applyTz(moment(date));
-    const dayOfYear = d.dayOfYear();
+    const dayOfMonth = d.date();
+    const month = d.month();
     const bds = await BirthdayModel.findAll({
       where: {
-        dayOfYear,
+        month,
+        dayOfMonth,
       },
     });
 
@@ -222,12 +225,14 @@ export class SqliteStorage implements IStorage {
       date: b.getDataValue("date"),
       userId: b.getDataValue("userId"),
       definedInChatId: b.getDataValue("definedInChatId"),
-      dayOfYear: b.getDataValue("dayOfYear"),
+      dayOfMonth: b.getDataValue("dayOfMonth"),
+      month: b.getDataValue("month"),
     }));
   }
 
   async setBirthday(userId: number, chatId: number, date: Date): Promise<void> {
-    const dayOfYear = applyTz(moment(date)).dayOfYear();
+    const dayOfMonth = applyTz(moment(date)).date();
+    const month = applyTz(moment(date)).month();
     const bd = await BirthdayModel.findOne({
       where: { userId, definedInChatId: chatId },
       rejectOnEmpty: false,
@@ -235,13 +240,15 @@ export class SqliteStorage implements IStorage {
 
     if (bd) {
       bd.setDataValue("date", date);
-      bd.setDataValue("dayOfYear", dayOfYear);
+      bd.setDataValue("dayOfMonth", dayOfMonth);
+      bd.setDataValue("month", month);
       await bd.save();
     } else {
       await BirthdayModel.create({
         userId,
         date,
-        dayOfYear,
+        dayOfMonth,
+        month,
         definedInChatId: chatId,
       });
     }

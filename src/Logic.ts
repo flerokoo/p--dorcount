@@ -97,6 +97,9 @@ export class Logic {
     }, new Map<number, Birthday[]>());
 
     for (const [chatId, chatBds] of groupedByChat.entries()) {
+
+      if (chatBds.length === 0) continue;
+
       let usernames = [];
 
       for (const bd of chatBds) {

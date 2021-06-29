@@ -36,12 +36,16 @@ export const defineMessageModel = (db: Sequelize) => {
         {
           unique: false,
           fields: ["chatId"],
+          
         },
         {
           fields: ["dayOfWeek"]
         }, 
         {
           fields: ["userId"]
+        },
+        {
+          fields: ["createdAt"]
         }
       ],
     }
