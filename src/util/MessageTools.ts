@@ -55,7 +55,7 @@ export class MessageTools {
 
     return texts
       .sort((a, b) => b.count - a.count)
-      .map(e => `${e.userFinalName}: ${e.count}`)
+      .map((e) => `${e.userFinalName}: ${e.count}`)
       .join("\n");
   }
 }

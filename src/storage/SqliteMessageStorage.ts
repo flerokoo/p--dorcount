@@ -46,7 +46,7 @@ export class SqliteMessageStorage implements IMessageStorage {
         },
       };
     }
-    console.log(exclusion);
+    
     const messages = await MessageModel.findAll({
       where: {
         chatId,

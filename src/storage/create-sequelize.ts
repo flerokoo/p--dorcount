@@ -20,7 +20,7 @@ export async function createSequelize() {
     sequelize = new Sequelize({
       dialect: "sqlite",
       storage: "./persist/database.sqlite",
-      logging: !isProduction()
+      logging: false
     });
 
     const models = defineModels(sequelize);
