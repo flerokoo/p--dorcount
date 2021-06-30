@@ -13,7 +13,8 @@ import { userSignature } from "./util/user-signature";
 import plural from "plural-ru";
 import { IStorage } from "./contracts/IStorage";
 import { logger } from "./util/logger";
-
+import moment from "moment-timezone";
+import { TimeCycle } from "./TimeCycle";
 const dayTexts = [
   "среднего воскресенья",
   "среднего понедельника",
@@ -25,6 +26,8 @@ const dayTexts = [
 ];
 
 export class Logic {
+  private ready = false;
+
   constructor(
     private bot: Bot,
     private cycle: ITimeCycle,
@@ -32,7 +35,9 @@ export class Logic {
   ) {}
 
   async start() {
-    
+    if (this.ready) {
+      return;
+    }
     const catchAndLog = (callback: Function) => (...data: any) => {
       try {
         callback(...data);
@@ -44,18 +49,22 @@ export class Logic {
     this.cycle.on("newday", catchAndLog(this.onNewDay.bind(this)));
     this.bot.on("message", catchAndLog(this.onBotNewMessage.bind(this)));
     this.bot.on("sendstats", catchAndLog(this.onSendStatsRequest.bind(this)));
-    this.bot.on("birthdayset", catchAndLog(this.onBirthdaySetRequest.bind(this)));
+    this.bot.on(
+      "birthdayset",
+      catchAndLog(this.onBirthdaySetRequest.bind(this))
+    );
 
     this.cycle.start();
+    this.ready = true;
+
   }
 
   async onNewDay() {
-    await this.sendDayStats();
+    await this.sendDayStats(tzMoment().subtract(1, "hour"));
     await this.sendBirthdays();
   }
 
-  private async sendDayStats() {
-    const currentDate = tzMoment().subtract(1, "hour");
+  private async sendDayStats(currentDate: moment.Moment) {
     const currentDay = currentDate.toDate().getDay();
 
     const all = await this.storage.getMessagesBetweenDates(
@@ -74,7 +83,7 @@ export class Logic {
         currentDate.toDate()
       );
       if (averageMessages == 0) averageMessages = messageCountToday;
-      
+
       const groupedByUser = MessageTools.groupByUser(messagesToday);
       const statsText = await MessageTools.generateDayStatsText(
         groupedByUser,
@@ -150,8 +159,7 @@ export class Logic {
     // );
     // const groupedByChat = MessageTools.groupByChatId(all);
     // this.bot.sendMessage(data.chatId, all.length.toString());
-    console.log("STATS");
-    await this.sendDayStats();
+    await this.sendDayStats(data.date ?? tzMoment());
     await this.sendBirthdays();
   }
 
