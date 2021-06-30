@@ -20,6 +20,7 @@ export type MessageEventData = {
 
 export type SendStatsRequestEventData = {
   chatId: number;
+  date?: moment.Moment;
 };
 
 export type BirthdaySetRequestEventData = {
@@ -49,13 +50,16 @@ export class Bot extends EventEmitter {
   }
 
   public async start() {
+    if (this.ready) {
+      return;
+    }
     this.bot = new Telegraf(this.token);
     const botInfo = await this.bot.telegram.getMe();
     (this.bot as any).options.username = botInfo.username;
     this.bot.command("stats", this.onStatsCommand.bind(this));
     this.bot.command("birthday", this.onBirthdayCommand.bind(this));
     this.bot.on("message", this.onMessage.bind(this));
-    
+
     await this.bot.launch();
     this.ready = true;
   }
@@ -99,8 +103,13 @@ export class Bot extends EventEmitter {
 
   onStatsCommand(ctx: Context) {
     const chatId = ctx.chat?.id;
+    const date = this.extractDate((ctx.message as any).text);
+
     if (typeof chatId === "number" && chatId < 0) {
-      this.emit(BotEvents.SEND_STATS_REQUEST, { chatId });
+      this.emit(BotEvents.SEND_STATS_REQUEST, {
+        chatId,
+        date: typeof date === "string" ? undefined : date,
+      });
     }
   }
 
@@ -109,16 +118,14 @@ export class Bot extends EventEmitter {
 
     if (!text || typeof text !== "string") return;
 
-    const result = text.match(/(\d{2})\/(\d{2})\/(\d{4})/gi);
+    const date = this.extractDate(text);
 
-    if (!result) {
+    if (date == "NoDateInText") {
       await ctx.reply("День рождения задается в формате DD/MM/YYYY, дружок");
       return;
     }
 
-    const date = moment(result[0], "DD/MM/YYYY");
-
-    if (!date.isValid()) {
+    if (date == "NotAValidDate") {
       await ctx.reply("Такого не может быть, другалёк");
       return;
     }
@@ -139,5 +146,19 @@ export class Bot extends EventEmitter {
       first_name: ctx.from?.first_name,
       last_name: ctx.from?.last_name,
     });
+  }
+
+  extractDate(text: string): "NoDateInText" | "NotAValidDate" | moment.Moment {
+    const result = text.match(/(\d{2})\/(\d{2})\/(\d{4})/gi);
+
+    if (!result) {
+      return "NoDateInText";
+    }
+
+    const date = moment(result[0], "DD/MM/YYYY");
+
+    if (!date.isValid()) return "NotAValidDate";
+
+    return date;
   }
 }
