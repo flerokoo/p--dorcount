@@ -50,9 +50,12 @@ export class MessageTools {
       const { first_name, last_name, username } = user;
 
       const userFinalName = userSignature(user);
-      texts.push(`${userFinalName.trim()}: ${count}`);
+      texts.push({ userFinalName, count });
     }
 
-    return texts.join("\n");
+    return texts
+      .sort((a, b) => b.count - a.count)
+      .map(e => `${e.userFinalName}: ${e.count}`)
+      .join("\n");
   }
 }
