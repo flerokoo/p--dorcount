@@ -55,6 +55,7 @@ export class Bot extends EventEmitter {
     this.bot.command("stats", this.onStatsCommand.bind(this));
     this.bot.command("birthday", this.onBirthdayCommand.bind(this));
     this.bot.on("message", this.onMessage.bind(this));
+    
     await this.bot.launch();
     this.ready = true;
   }

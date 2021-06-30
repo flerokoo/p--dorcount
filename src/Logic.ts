@@ -5,13 +5,14 @@ import {
   BirthdaySetRequestEventData,
 } from "./Bot";
 import { ITimeCycle } from "./contracts/ITimeCycle";
-import { IStorage } from "./contracts/IStorage";
 import { Message } from "./domain/Message";
 import { MessageTools } from "./util/MessageTools";
 import { tzMoment } from "./util/tzmoment";
 import { Birthday } from "./domain/Birthday";
 import { userSignature } from "./util/user-signature";
 import plural from "plural-ru";
+import { IStorage } from "./contracts/IStorage";
+import { logger } from "./util/logger";
 
 const dayTexts = [
   "среднего воскресенья",
@@ -31,14 +32,21 @@ export class Logic {
   ) {}
 
   async start() {
-    this.cycle.on("newday", this.onNewDay.bind(this));
-    this.bot.on("message", this.onBotNewMessage.bind(this));
-    this.bot.on("sendstats", this.onSendStatsRequest.bind(this));
-    this.bot.on("birthdayset", this.onBirthdaySetRequest.bind(this));
+    
+    const catchAndLog = (callback: Function) => (...data: any) => {
+      try {
+        callback(...data);
+      } catch (error) {
+        logger.error(error);
+      }
+    };
+
+    this.cycle.on("newday", catchAndLog(this.onNewDay.bind(this)));
+    this.bot.on("message", catchAndLog(this.onBotNewMessage.bind(this)));
+    this.bot.on("sendstats", catchAndLog(this.onSendStatsRequest.bind(this)));
+    this.bot.on("birthdayset", catchAndLog(this.onBirthdaySetRequest.bind(this)));
 
     this.cycle.start();
-    await this.storage.prepare();
-    await this.bot.start();
   }
 
   async onNewDay() {
@@ -55,15 +63,18 @@ export class Logic {
       currentDate.endOf("day").toDate()
     );
     const groupedByChat = MessageTools.groupByChatId(all);
+
     for (const chatId of groupedByChat.keys()) {
       const messagesToday = groupedByChat.get(chatId) as Message[];
       const messageCountToday = messagesToday!.length;
+
       let averageMessages = await this.storage.getAverageMessagesAtDay(
         chatId,
         currentDay,
         currentDate.toDate()
       );
       if (averageMessages == 0) averageMessages = messageCountToday;
+      
       const groupedByUser = MessageTools.groupByUser(messagesToday);
       const statsText = await MessageTools.generateDayStatsText(
         groupedByUser,
@@ -88,8 +99,6 @@ export class Logic {
   async sendBirthdays() {
     const bds = await this.storage.getBirthdaysAtDate(tzMoment().toDate());
 
-    console.log(bds);
-
     const groupedByChat = bds.reduce((acc, cur) => {
       if (!acc.has(cur.definedInChatId)) acc.set(cur.definedInChatId, []);
       acc.get(cur.definedInChatId)!.push(cur);
@@ -97,7 +106,6 @@ export class Logic {
     }, new Map<number, Birthday[]>());
 
     for (const [chatId, chatBds] of groupedByChat.entries()) {
-
       if (chatBds.length === 0) continue;
 
       let usernames = [];
@@ -126,15 +134,7 @@ export class Logic {
     chatId,
     receiveDate,
   }: MessageEventData) {
-    console.log(
-      "new message",
-      userId,
-      first_name,
-      last_name,
-      username,
-      "chat: " + chatId
-    );
-    await this.storage.createUserIfNotExists(
+    await this.replaceFakeUserOrCreateNew(
       userId,
       username,
       first_name,
@@ -156,7 +156,7 @@ export class Logic {
   }
 
   async onBirthdaySetRequest(data: BirthdaySetRequestEventData) {
-    await this.storage.createUserIfNotExists(
+    await this.replaceFakeUserOrCreateNew(
       data.userId,
       data.username,
       data.first_name,
@@ -164,5 +164,42 @@ export class Logic {
     );
     await this.storage.setBirthday(data.userId, data.chatId, data.date);
     await this.bot.sendMessage(data.chatId, "День рождения задан, дружбан");
+  }
+
+  async replaceFakeUserOrCreateNew(
+    id: number,
+    username: string,
+    first_name: string,
+    last_name: string
+  ) {
+    const user = await this.storage.getUser(id);
+
+    if (!user) {
+      await this.storage.createUserIfNotExists(
+        id,
+        username,
+        first_name,
+        last_name
+      );
+      return;
+    }
+
+    if (user.fake) {
+      // replace fake values with real ones
+      await this.storage.updateUser(id, {
+        username,
+        first_name,
+        last_name,
+      });
+    }
+  }
+
+  async generateFakeUserId() {
+    let newId: number;
+    while (true) {
+      newId = Math.round(Math.random() * 1e32);
+      const user = await this.storage.getUser(newId);
+      if (!user) return newId;
+    }
   }
 }
