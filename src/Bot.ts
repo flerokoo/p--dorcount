@@ -53,12 +53,16 @@ export class Bot extends EventEmitter {
     if (this.ready) {
       return;
     }
+    
     this.bot = new Telegraf(this.token);
     const botInfo = await this.bot.telegram.getMe();
     (this.bot as any).options.username = botInfo.username;
     this.bot.command("stats", this.onStatsCommand.bind(this));
     this.bot.command("birthday", this.onBirthdayCommand.bind(this));
     this.bot.on("message", this.onMessage.bind(this));
+
+    process.once("SIGINT", () => this.bot?.stop("SIGINT"));
+    process.once("SIGTERM", () => this.bot?.stop("SIGTERM"));
 
     await this.bot.launch();
     this.ready = true;
